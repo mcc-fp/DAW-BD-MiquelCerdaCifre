@@ -1,0 +1,233 @@
+Autor: Miquel Cerdà Cifre – Tasca BD 7
+
+NOTE: To be able to do the exercises with MongoDB Shell:
+
+1-) I already create a connection
+ 
+2-) Open a new command Windows and start MongoDB with: mongod
+ 
+3-) In another command window start Mongodb Shell with: mongosh
+ 
+
+Write the code used to perform the following tasks from the MongoDB shell:
+
+1.Create a database called zoo. 
+
+use zoo
+ 
+
+2. Insert a collection called animals
+
+db.createCollection("animals")
+ 
+
+3.Confirm that the database and the collection have been successfully created.
+
+      show dbs                –>To be able to show the databases we have
+      use zoo                -> To use the zoo databse
+      show collections       -> To be able to show the collections we have inside zoo
+
+
+4. Insert the  documents contained in the animals.json file.
+
+db.animals.insertMany([copy/paste the animals.json file content])
+ 
+
+5- Write a MongoDB query to find animals that have Rainforest as their habitat and are attended by a caretaker named Emily Brown.
+
+db.animals.find({
+     habitat: "Rainforest",
+     "caretakers.nameCaretaker": "Emily Brown"
+})
+ 
+
+6- Write a MongoDB query to display only the name, species, and habitat of all animals sorted by their species in ascending order.
+
+db.animals.find(
+{},
+{
+    _id: 0,
+    name: 1,
+    species: 1,
+    habitat: 1
+}
+).sort({ species: 1 }) 
+
+ 
+7 .Write a MongoDB query to find animals with the species Tiger and display only their name and age, sorted by age in descending order.
+
+db.animals.find(
+{ species: "Tiger" },
+{
+     _id: 0,
+     name: 1,
+     age: 1
+}
+).sort({ age: -1 })
+
+
+8. Write a MongoDB query to insert the next animal into the animals collection:
+name: "Leo",
+age: 7,
+gender: "Male",
+species: "Lion",
+habitat: "Savanna",
+birthplace: "Masai Mara, Kenya",
+parents: "Unknown", gender: "Male", Unknown", gender: "Female"
+caretakers: id: 501, name: "Jake Adams" }]
+
+
+db.animals.insertOne({
+name: "Leo",
+age: 7,
+gender: "Male",
+species: "Lion",
+habitat: "Savanna",
+birthplace: "Masai Mara, Kenya",
+parents: [
+{ name: "Unknown", gender: "Male" },
+{ name: "Unknown", gender: "Female" }
+],
+caretakers: [
+{ idCaretaker: 501, nameCaretaker: "Jake Adams" }
+]
+})
+ 
+
+9. Write a MongoDB query to update the age (to 8) of the animal you just inserted using the $set operator
+
+db.animals.updateOne(
+      { name: "Leo", species: "Lion" },
+      { $set: { age: 8 } }
+)
+
+
+10. Write a MongoDB query to rename the habitat field to environment for all animals in the animals collection.
+
+db.animals.updateMany(
+     {},
+     { $rename: { "habitat": "environment" } }
+)
+ 
+
+11- Write a MongoDB query using the aggregation framework to find animals aged les than 10 and sort them alphabetically by their name.
+
+db.animals.aggregate([
+{
+     $match: { age: { $lt: 10 } }
+},
+{
+     $sort: { name: 1 }
+}
+])
+
+ 
+
+12. Write a MongoDB query using the aggregation framework to group animals by their species and count the number of animals in each species.
+
+db.animals.aggregate([
+{
+      $group: {
+      _id: "$species",
+     totalAnimals: { $sum: 1 }
+}
+},
+{
+    $sort: { _id: 1 }
+}
+])
+
+
+13. Write a MongoDB query to create a new collection called Caretakers by extracting all caretakers from the animals collection. Ensure that caretakers do not repeat and include an array of the animals they attend to.
+
+db.animals.aggregate([
+  {
+    $unwind: "$caretakers"
+  },
+  {
+    $group: {
+      _id: "$caretakers.idCaretaker",
+      nameCaretaker: { $first: "$caretakers.nameCaretaker" },
+      animals: { $addToSet: "$name" }
+    }
+  },
+  {
+    $project: {
+      _id: 0,
+      idCaretaker: "$_id",
+      nameCaretaker: 1,
+      animals: 1
+    }
+  },
+  {
+    $out: "Caretakers"
+  }
+])
+
+ 
+14. Write a MongoDB query to find the top 3 oldest animals.
+
+db.animals.find().sort({ age: -1 }).limit(3)
+
+
+15.Write a MongoDB query to display animals between the 6th and 12th entries in the collection based on their insertion order.
+
+db.animals.find().sort({ _id: 1 }).skip(5).limit(7)
+
+16. Write a MongoDB query using the aggregation framework to create a new collection called Habitats. This collection should group animals by their environment (formerly habitat) and include the following fields.
+● The environment name.
+● The total number of animals in that environment.
+● An array of unique species in that environment, sorted alphabetically.
+● An array of unique caretakers who attend animals in that environment.
+
+
+db.animals.aggregate([
+  {
+    $group: {
+      _id: "$environment",
+      animalIds: { $addToSet: "$_id" },
+      species: { $addToSet: "$species" },
+      caretakersArrays: { $push: "$caretakers" }
+    }
+  },
+  {
+    $project: {
+      _id: 0,
+      environment: "$_id",
+      totalAnimals: { $size: "$animalIds" },
+      species: {
+        $sortArray: {
+          input: "$species",
+          sortBy: 1
+        }
+      },
+      caretakersArrays: 1
+    }
+  },
+  {
+    $unwind: "$caretakersArrays"
+  },
+  {
+    $unwind: "$caretakersArrays"
+  },
+  {
+    $group: {
+      _id: "$environment",
+      totalAnimals: { $first: "$totalAnimals" },
+      species: { $first: "$species" },
+      caretakers: { $addToSet: "$caretakersArrays.nameCaretaker" }
+    }
+  },
+  {
+    $project: {
+      _id: 0,
+      environment: "$_id",
+      totalAnimals: 1,
+      species: 1,
+      caretakers: 1
+    }
+  },
+  {
+    $out: "Habitats"
+  }
+])
